@@ -12,6 +12,8 @@ class Pong(object):
         self.midy = screensize[1] // 2
         self.score_a = 0
         self.score_b = 0
+        self.paddle_left = PlayerPaddle(screensize)
+        self.paddle_right = BotPaddle(screensize)
 
     def point_scored(self, ball):
         if ball.posx < 0:
@@ -20,6 +22,66 @@ class Pong(object):
         if ball.posx > self.screensize[0]:
             self.score_a += 1
             ball.reset()
+
+    def create_Button(self,txt, canvas, x, y, color, size, boxed):
+        font = pygame.font.Font(None, size)
+        button_txt = font.render(txt, True, color)
+        rect = button_txt.get_rect()
+        rect.center = (x, y)
+        canvas.blit(button_txt, rect)
+        if boxed:
+            padding = 20
+            box = rect[0] - padding, rect[1] - padding / 2, rect[2] + padding * 2, rect[3] + padding
+            pygame.draw.rect(canvas, pygame.color.Color("white"), box, 5)
+        return rect
+
+    def display_main(self, canvas):
+        # set background for main menu
+        canvas.fill([80, 120, 80])
+        headline = self.create_Button("WELCOME TO PONG", canvas, 500, 70, pygame.color.Color("pink"), 60, False)
+        settings = self.create_Button(">>SETTINGS<<", canvas, 500, 140, pygame.color.Color("pink"), 50, False)
+        mode = self.create_Button("Choose Mode: ", canvas, 300, 300, pygame.color.Color("skyblue"), 40, True)
+        button1 = self.create_Button("Start", canvas, 300, 250, pygame.color.Color("skyblue"), 40, True)
+        button2 = self.create_Button("Singleplayer", canvas, 520, 300, pygame.color.Color("skyblue"), 30, True)
+        button3 = self.create_Button("Multiplayer", canvas, 700, 300, pygame.color.Color("skyblue"), 30, True)
+
+        pygame.display.flip()
+        while True:
+            for evt in pygame.event.get():
+                if evt.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                # click "Start" button
+                if evt.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    if button1.collidepoint(pos):
+                        return
+                # handle "choose mode" options
+                    if button2.collidepoint(pos):
+                        padding = 20
+                        rect = button2
+                        box = rect[0] - padding, rect[1] - padding / 2, rect[2] + padding * 2, rect[3] + padding
+                        pygame.draw.rect(canvas, pygame.color.Color("orange"), box, 5)
+                        # reset the "multiplayer" button
+                        rect2 = button3
+                        box2 = rect2[0] - padding, rect2[1] - padding / 2, rect2[2] + padding * 2, rect2[3] + padding
+                        pygame.draw.rect(canvas, pygame.color.Color("white"), box2, 5)
+                        self.paddle_right = BotPaddle(self.screensize)
+                        pygame.display.flip()
+                    if button3.collidepoint(pos):
+                        padding = 20
+                        rect = button3
+                        box = rect[0] - padding, rect[1] - padding / 2, rect[2] + padding * 2, rect[3] + padding
+                        pygame.draw.rect(canvas, pygame.color.Color("orange"), box, 5)
+                        # reset the "singleplayer" button
+                        rect2 = button2
+                        box2 = rect2[0] - padding, rect2[1] - padding / 2, rect2[2] + padding * 2, rect2[3] + padding
+                        pygame.draw.rect(canvas, pygame.color.Color("white"), box2, 5)
+                        self.paddle_right = PlayerPaddle(self.screensize)
+                        pygame.display.flip()
+
+
+
 
     def display_options(self, canvas, ball, player_one, player_two):
         font = pygame.font.Font(None, 20)
@@ -144,7 +206,7 @@ class PlayerPaddle(object):
                                 self.posy - self.height // 2,
                                 self.width, self.height)
 
-    def render(self, canvas, screensize):
+    def render(self, canvas, screensize, ball):
         self.update(screensize)
         # reset direction to stop paddle from moving
         self.direction = 0
@@ -194,7 +256,7 @@ class BotPaddle(object):
         pygame.draw.rect(canvas, self.color, self.rect)
 
 
-def main():
+def main2():
 
     pygame.init()
     screensize = (1000, 700)
@@ -202,10 +264,11 @@ def main():
     pygame.display.set_caption("PONG")
     pong = Pong(screensize)
     ball = PongBall(screensize)
-    player = PlayerPaddle(screensize)
-    bot = BotPaddle(screensize)
     running = True
     clock = pygame.time.Clock()
+
+    # enter menu
+    pong.display_main(win)
 
     while running:
         clock.tick(60)
@@ -216,30 +279,30 @@ def main():
             if evt.type == pygame.KEYDOWN:
                 if evt.key == pygame.K_p:
                     pong.pause_game(win)
-                if evt.key == pygame.K_PLUS:
+                if evt.key == pygame.K_PLUS: # define a limit otherwise it breaks the game or adjust score condition
                     ball.speedx += 1
                     ball.speedy += 1
-                    player.speed += 1
-                    bot.speed += 1
+                    pong.paddle_left.speed += 1
+                    pong.paddle_right.speed += 1
                 if evt.key == pygame.K_MINUS:
                     ball.speedx -= 1
                     ball.speedy -= 1
-                    player.speed -= 1
-                    bot.speed -= 1
+                    pong.paddle_left.speed -= 1
+                    pong.paddle_right.speed -= 1
 
         # game
-        ball.update_pos(player, bot)
+        ball.update_pos(pong.paddle_left, pong.paddle_right)
         win.fill((0, 0, 0))
         ball.render(win)
-        player.render(win, screensize)
-        bot.render(win, screensize, ball)
+        pong.paddle_left.render(win, screensize, ball)
+        pong.paddle_right.render(win, screensize, ball)
 
         # if ball.rect.right >= screensize[0]:
          #    running = 0
         pong.point_scored(ball)
         # display score and options
         pong.display_score(win)
-        pong.display_options(win, ball, player, bot)
+        pong.display_options(win, ball, pong.paddle_left, pong.paddle_right)
         # refresh screen
         pygame.display.flip()
 
@@ -247,4 +310,4 @@ def main():
 
 
 # run the game
-main()
+# main()
